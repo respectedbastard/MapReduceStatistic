@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 
 import requests
 from textblob import TextBlob
-from worker.models import Link
+from schemas import Link
 
 
 
