@@ -12,7 +12,7 @@ from time import time
 import asyncio
 import aiohttp
 
-from settings import CASH_CAPACITY, SLAVE_QUANTITY
+from settings import settings
 
 cash_dict = {}
 
@@ -27,15 +27,15 @@ class Links(BaseModel):
 @app.post('/get_result/')
 async def main(links: Links): 
     start_time = time()
-    links_for_slave = [list() for _ in range(SLAVE_QUANTITY)]
+    links_for_slave = [list() for _ in range(settings.slave_quantity)]
     counter = 0
     for link in links.get_links:
-        if counter > SLAVE_QUANTITY - 1:
+        if counter > settings.slave_quantity - 1:
             counter = 0
         links_for_slave[counter].append(link)
         counter += 1
-    for i in range(SLAVE_QUANTITY):
-        await process_links(links_for_slave[i], f'http://localhost:900{i}/process')
+    for i in range(settings.slave_quantity):
+        await process_links(links_for_slave[i], f'http://localhost:900{i+1}/process')
     
     clear_cash()
     end_time = time()
@@ -59,10 +59,13 @@ async def fetch(session, url, request):
 def cash(response_dict):
     counter = 0
     for word, value in response_dict.items():
-        if word in cash_dict and len(cash_dict) < CASH_CAPACITY:
+        if word in cash_dict:
             cash_dict[word] += value
+        elif word not in cash_dict and counter < settings.cash_capacity:
+            cash_dict[word] = value
+            counter += 1
         else:
-            to_db = list(cash_dict.items())[int(CASH_CAPACITY*0.2):] 
+            to_db = list(cash_dict.items())[int(settings.cash_capacity*0.2):] 
             for elem in to_db:
                 word_to_db, value_to_db = elem
                 push_data(word_to_db, value_to_db) 
@@ -108,4 +111,4 @@ def delete():
     with Session(autoflush=True, bind=engine) as db:
         db.query(models.WordCount).delete()
         db.commit()
-    return {'Таблица': 'успешно очищена'}
+        return {'Таблица': 'успешно очищена'}
